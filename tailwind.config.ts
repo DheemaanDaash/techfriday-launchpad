@@ -66,6 +66,7 @@ export default {
         instagram: "#E4405F",
         youtube: "#FF0000",
         tiktok: "#000000",
+        subscribe: "#4f46e5",
       },
       borderRadius: {
         lg: "var(--radius)",
