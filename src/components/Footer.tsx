@@ -45,7 +45,7 @@ const Footer = () => {
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2020–2023 TechFriday. All rights reserved.
+              © 2020–2025 TechFriday. All rights reserved.
             </p>
           </div>
 
