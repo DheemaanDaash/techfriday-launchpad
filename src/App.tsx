@@ -17,12 +17,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Coming soon standalone page */}
-          <Route path="/coming-soon" element={<ComingSoon />} />
+          {/* Coming soon as default */}
+          <Route path="/" element={<ComingSoon />} />
 
-          {/* Main site with navbar + footer */}
+          {/* Main site (hidden for now) */}
           <Route element={<Layout />}>
-            <Route path="/" element={<Home />} />
+            <Route path="/home" element={<Home />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
