@@ -21,11 +21,8 @@ const Navbar = () => {
     <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center">
           <img src={logo} alt="TechFriday" className="h-9 w-9" />
-          <span className="text-lg font-bold font-display bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            TechFriday
-          </span>
         </Link>
 
         {/* Desktop nav */}
