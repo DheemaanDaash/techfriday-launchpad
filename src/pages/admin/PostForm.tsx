@@ -11,6 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
+import RichTextEditor from "@/components/admin/RichTextEditor";
+import FeaturedImageUpload from "@/components/admin/FeaturedImageUpload";
 import type { Database } from "@/integrations/supabase/types";
 
 type PostStatus = Database["public"]["Enums"]["post_status"];
@@ -31,6 +33,7 @@ const PostForm = () => {
   const [categoryId, setCategoryId] = useState<string>("");
   const [status, setStatus] = useState<PostStatus>("draft");
   const [author, setAuthor] = useState("");
+  const [featuredImage, setFeaturedImage] = useState<string | null>(null);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["admin-categories"],
@@ -61,6 +64,7 @@ const PostForm = () => {
       setCategoryId(post.category_id ?? "");
       setStatus(post.status);
       setAuthor(post.author ?? "");
+      setFeaturedImage(post.featured_image ?? null);
     }
   }, [post]);
 
@@ -74,6 +78,7 @@ const PostForm = () => {
         category_id: categoryId || null,
         status,
         author: author || null,
+        featured_image: featuredImage,
         published_at: status === "published" ? new Date().toISOString() : null,
       };
 
@@ -140,6 +145,8 @@ const PostForm = () => {
             </Select>
           </div>
 
+          <FeaturedImageUpload value={featuredImage} onChange={setFeaturedImage} />
+
           <div className="space-y-2">
             <Label>Excerpt</Label>
             <Textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} placeholder="Brief summary..." />
@@ -147,7 +154,7 @@ const PostForm = () => {
 
           <div className="space-y-2">
             <Label>Content</Label>
-            <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={12} placeholder="Write your post content here..." className="font-mono text-sm" />
+            <RichTextEditor content={content} onChange={setContent} />
           </div>
 
           <div className="flex items-center gap-3">
