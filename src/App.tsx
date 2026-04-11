@@ -37,6 +37,7 @@ const App = () => (
               <Route path="/home" element={<Home />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
+              <Route path="/category/:slug" element={<CategoryPosts />} />
             </Route>
 
             {/* Admin */}
