@@ -10,6 +10,7 @@ import AdminLayout from "@/components/AdminLayout";
 import Home from "./pages/Home";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
+import CategoryPosts from "./pages/CategoryPosts";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/admin/Login";
