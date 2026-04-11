@@ -1,29 +1,45 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
+
+const POSTS_PER_PAGE = 20;
 
 const Posts = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
-  const { data: posts = [], isLoading } = useQuery({
-    queryKey: ["admin-posts"],
+  const { data: result, isLoading } = useQuery({
+    queryKey: ["admin-posts", search, page],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("posts")
-        .select("*, categories(name)")
-        .order("created_at", { ascending: false });
+        .select("*, categories(name)", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range((page - 1) * POSTS_PER_PAGE, page * POSTS_PER_PAGE - 1);
+
+      if (search.trim()) {
+        query = query.ilike("title", `%${search.trim()}%`);
+      }
+
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data;
+      return { posts: data ?? [], total: count ?? 0 };
     },
   });
+
+  const posts = result?.posts ?? [];
+  const totalPages = Math.ceil((result?.total ?? 0) / POSTS_PER_PAGE);
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -49,62 +65,92 @@ const Posts = () => {
         </Button>
       </div>
 
+      {/* Search */}
+      <div className="relative mb-4 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search posts..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="pl-9"
+        />
+      </div>
+
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>
       ) : posts.length === 0 ? (
-        <p className="text-muted-foreground">No posts yet. Create your first post!</p>
+        <p className="text-muted-foreground">{search ? "No posts match your search." : "No posts yet. Create your first post!"}</p>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {posts.map((post) => (
-                <TableRow key={post.id}>
-                  <TableCell className="font-medium max-w-[250px] truncate">{post.title}</TableCell>
-                  <TableCell className="text-muted-foreground">{(post.categories as any)?.name ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant={post.status === "published" ? "default" : "secondary"}>
-                      {post.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {format(new Date(post.created_at), "MMM d, yyyy")}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link to={`/admin/posts/${post.id}`}><Pencil className="h-4 w-4" /></Link>
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete this post?</AlertDialogTitle>
-                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => remove.mutate(post.id)}>Delete</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
+        <>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {posts.map((post) => (
+                  <TableRow key={post.id}>
+                    <TableCell className="font-medium max-w-[250px] truncate">{post.title}</TableCell>
+                    <TableCell className="text-muted-foreground">{(post.categories as any)?.name ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={post.status === "published" ? "default" : "secondary"}>
+                        {post.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {format(new Date(post.created_at), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" asChild>
+                          <Link to={`/admin/posts/${post.id}`}><Pencil className="h-4 w-4" /></Link>
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+                              <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => remove.mutate(post.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Page {page} of {totalPages} ({result?.total} posts)
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
