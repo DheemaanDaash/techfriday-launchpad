@@ -1,88 +1,77 @@
 
 
-# TechFriday Blog Publishing Admin Portal — Phased Plan
+## Plan: Remaining Items + Sign Out Fix + Sidebar Logo Behavior
 
-This plan is designed to be built over multiple days using ~5 credits per day. Each phase is a single prompt/credit worth of work.
+### Remaining Items from the Original Plan
 
----
+| Item | Status |
+|------|--------|
+| Post preview before publishing | Not built |
+| `/category/:slug` route | Not built |
+| Home page hero with latest posts | Placeholder only |
+| Admin-side pagination | Not built |
+| Search (admin + public) | Not built |
+| OG image meta tags | Not built |
+| Dark/light mode QA | Not done |
+| Sign out redirect | Needs improvement |
+| Sidebar collapsed logo | Needs fix |
 
-## Phase 1: Backend Setup (Day 1 — 3 credits)
+### What This Plan Covers
 
-**Credit 1** — Enable Lovable Cloud, create database tables:
-- `categories` table (id, name, slug, created_at)
-- `posts` table (id, title, slug, content, excerpt, featured_image, category_id, status [draft/published], author, published_at, created_at, updated_at)
-- Seed default categories: Android, Apple, News, Samsung, Uncategorized, Videos
+**1. Admin Sidebar — collapsed logo fix**
+- When sidebar is collapsed, show only the favicon/logo image (no text) at its current size so menu items don't shift position
+- Currently the logo already shows when collapsed, but the `SidebarGroupLabel` layout changes. Fix: always render the logo `img` at a fixed size; only conditionally render the text span. Ensure the label container has consistent height/padding.
 
-**Credit 2** — Set up authentication:
-- Admin login page at `/admin/login`
-- Protect all `/admin/*` routes behind auth
-- RLS policies so only authenticated admin can CRUD posts/categories
+**2. Sign Out — redirect to /admin/login**
+- Update the `signOut` function call in `AdminSidebar.tsx` to navigate to `/admin/login` after signing out using `useNavigate`.
 
-**Credit 3** — Verify auth flow works end-to-end
+**3. Post Preview (Phase 3 remaining)**
+- Add a "Preview" button in `PostForm.tsx` that opens a dialog/modal rendering the post content with the same `prose` styling used on the public blog post page.
 
----
+**4. `/category/:slug` route (Phase 4 remaining)**
+- Create `src/pages/CategoryPosts.tsx` — fetches category by slug, lists published posts filtered by that category with pagination.
+- Add route `/category/:slug` in `App.tsx` under the Layout wrapper.
 
-## Phase 2: Admin Dashboard & Category Management (Day 2 — 5 credits)
+**5. Home page hero section (Phase 4 remaining)**
+- Rebuild `Home.tsx` with a hero showing latest 3-4 featured/published posts (large card + smaller cards grid).
+- Below hero: recent posts grid section.
 
-**Credit 4** — Admin layout with sidebar navigation (Dashboard, Posts, Categories, Settings) and a dashboard overview page showing post/category counts
+**6. Admin pagination (Phase 5)**
+- Add pagination controls to the Posts list page in admin (`src/pages/admin/Posts.tsx`), 20 posts per page.
 
-**Credit 5** — Category management page: list all categories in a table with add/edit/delete functionality
+**7. Search (Phase 5)**
+- **Public**: Add a search bar to the Blog page that filters posts by title/excerpt using Supabase `ilike`.
+- **Admin**: Add a search input above the Posts table that filters by title.
 
-**Credit 6** — Post list page: table of all posts with title, category, status, date, and action buttons (edit/delete/view)
+**8. OG meta tags (Phase 5)**
+- In `BlogPost.tsx`, add `<meta property="og:image">` and `og:title`/`og:description` using `document.head` or a `<Helmet>`-style approach (using direct DOM manipulation since react-helmet isn't installed).
 
-**Credit 7** — Post create/edit form: title, slug (auto-generated), category dropdown, rich text content editor, excerpt, featured image upload, status toggle (draft/published)
+**9. Dark/light mode QA**
+- Review all pages for theme consistency — ensure cards, backgrounds, text colors work in both modes.
 
-**Credit 8** — Verify admin CRUD for posts and categories works end-to-end
+### Technical Details
 
----
+**Files to create:**
+- `src/pages/CategoryPosts.tsx`
 
-## Phase 3: Rich Editor & Image Upload (Day 3 — 4 credits)
+**Files to modify:**
+- `src/components/AdminSidebar.tsx` — fix collapsed logo, improve sign-out with redirect
+- `src/pages/admin/PostForm.tsx` — add preview dialog
+- `src/pages/Home.tsx` — rebuild with hero + recent posts
+- `src/pages/admin/Posts.tsx` — add pagination + search
+- `src/pages/Blog.tsx` — add search bar
+- `src/pages/BlogPost.tsx` — add OG meta tags
+- `src/App.tsx` — add `/category/:slug` route
 
-**Credit 9** — Integrate a Markdown or rich text editor (TipTap) into the post form for formatted content
+**No database changes needed** — all features use existing tables and queries.
 
-**Credit 10** — Set up Supabase Storage bucket for post images, wire featured image upload into the post form
-
-**Credit 11** — Post preview: allow admin to preview a post before publishing
-
-**Credit 12** — Test editor, image upload, and preview flow
-
----
-
-## Phase 4: Public Blog Frontend (Day 4 — 5 credits)
-
-**Credit 13** — Blog listing page at `/blog`: display published posts as cards with featured image, title, excerpt, category badge, and date
-
-**Credit 14** — Single post page at `/blog/:slug`: render full post content with category, date, and related posts
-
-**Credit 15** — Category filter page at `/category/:slug`: list posts filtered by category
-
-**Credit 16** — Wire Home page hero section to show latest/featured posts
-
-**Credit 17** — Test public blog pages, category filtering, and navigation
-
----
-
-## Phase 5: Polish & Extras (Day 5 — 3-5 credits)
-
-**Credit 18** — Pagination for blog listing and admin post list
-
-**Credit 19** — Search functionality for posts (admin and public)
-
-**Credit 20** — SEO meta tags per post (title, description, OG image), responsive polish
-
-**Credit 21-22** — Final QA: dark/light mode consistency, mobile responsiveness, edge cases
-
----
-
-## Technical Approach
-
-- **Backend**: Lovable Cloud (Supabase) for database, auth, storage, and RLS
-- **Editor**: TipTap rich text editor (React-compatible, free)
-- **Routing**: React Router nested routes — `/admin/*` for admin, `/blog/*` for public
-- **State**: TanStack Query for all data fetching/mutations
-- **UI**: Existing shadcn/ui components (tables, forms, dialogs, cards)
-
-## Summary
-
-5 phases over 5 days, ~20-22 credits total. Each day's work is self-contained and testable. By the end you have: admin auth, category CRUD, post CRUD with rich editor and image upload, public blog with category filtering, search, pagination, and SEO.
+### Implementation Order
+1. Sidebar fix (logo + sign out) — quick win
+2. Post preview modal
+3. Home page hero
+4. Category page + route
+5. Admin pagination + search
+6. Public blog search
+7. OG meta tags
+8. Dark/light mode review
 
