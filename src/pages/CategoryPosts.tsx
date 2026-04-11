@@ -1,68 +1,52 @@
-import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, User, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Calendar, User, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
 const POSTS_PER_PAGE = 9;
 
-const Blog = () => {
+const CategoryPosts = () => {
+  const { slug } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeCategory = searchParams.get("category") || "all";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ["public-categories"],
+  const { data: category } = useQuery({
+    queryKey: ["category-by-slug", slug],
     queryFn: async () => {
-      const { data, error } = await supabase.from("categories").select("*").order("name");
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("slug", slug!)
+        .single();
       if (error) throw error;
       return data;
     },
+    enabled: !!slug,
   });
 
   const { data: postsResult, isLoading } = useQuery({
-    queryKey: ["public-posts", activeCategory, currentPage, searchTerm],
+    queryKey: ["category-posts", category?.id, currentPage],
     queryFn: async () => {
-      let query = supabase
+      const { data, error, count } = await supabase
         .from("posts")
         .select("*, categories(name, slug)", { count: "exact" })
         .eq("status", "published")
+        .eq("category_id", category!.id)
         .order("published_at", { ascending: false })
         .range((currentPage - 1) * POSTS_PER_PAGE, currentPage * POSTS_PER_PAGE - 1);
-
-      if (activeCategory !== "all") {
-        const cat = categories.find((c) => c.slug === activeCategory);
-        if (cat) query = query.eq("category_id", cat.id);
-      }
-
-      if (searchTerm.trim()) {
-        query = query.or(`title.ilike.%${searchTerm.trim()}%,excerpt.ilike.%${searchTerm.trim()}%`);
-      }
-
-      const { data, error, count } = await query;
       if (error) throw error;
       return { posts: data ?? [], total: count ?? 0 };
     },
-    enabled: activeCategory === "all" || categories.length > 0,
+    enabled: !!category?.id,
   });
 
   const posts = postsResult?.posts ?? [];
   const totalPages = Math.ceil((postsResult?.total ?? 0) / POSTS_PER_PAGE);
-
-  const setCategory = (slug: string) => {
-    const params = new URLSearchParams();
-    if (slug !== "all") params.set("category", slug);
-    if (searchTerm) params.set("q", searchTerm);
-    setSearchParams(params);
-  };
 
   const setPage = (page: number) => {
     const params = new URLSearchParams(searchParams);
@@ -71,63 +55,21 @@ const Blog = () => {
     setSearchParams(params);
   };
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    const params = new URLSearchParams(searchParams);
-    if (value) params.set("q", value);
-    else params.delete("q");
-    params.delete("page");
-    setSearchParams(params);
-  };
-
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+      <Link to="/blog" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
+        <ArrowLeft className="mr-1 h-4 w-4" /> Back to Blog
+      </Link>
+
       <div className="mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Blog</h1>
-        <p className="text-muted-foreground">Latest tech news, reviews, and insights.</p>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
+          {category?.name ?? "Category"}
+        </h1>
+        <p className="text-muted-foreground">
+          All posts in {category?.name ?? "this category"}.
+        </p>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-6 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search posts..."
-          value={searchTerm}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* Category filter */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        <button
-          onClick={() => setCategory("all")}
-          className={cn(
-            "px-4 py-1.5 rounded-full text-sm font-medium transition-colors border",
-            activeCategory === "all"
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background text-muted-foreground border-border hover:border-primary/50"
-          )}
-        >
-          All
-        </button>
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setCategory(cat.slug)}
-            className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors border",
-              activeCategory === cat.slug
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-muted-foreground border-border hover:border-primary/50"
-            )}
-          >
-            {cat.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Posts grid */}
       {isLoading ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -136,14 +78,13 @@ const Blog = () => {
               <CardContent className="p-4 space-y-2">
                 <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-5 w-full" />
-                <Skeleton className="h-4 w-3/4" />
               </CardContent>
             </Card>
           ))}
         </div>
       ) : posts.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
-          <p className="text-lg">{searchTerm ? "No posts match your search." : "No posts found."}</p>
+          <p className="text-lg">No posts found in this category.</p>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -160,9 +101,7 @@ const Blog = () => {
                   </div>
                 )}
                 <CardContent className="p-4 space-y-2">
-                  {post.categories && (
-                    <Badge variant="secondary" className="text-xs">{(post.categories as any).name}</Badge>
-                  )}
+                  <Badge variant="secondary" className="text-xs">{(post.categories as any)?.name}</Badge>
                   <h2 className="font-semibold text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors">{post.title}</h2>
                   {post.excerpt && <p className="text-sm text-muted-foreground line-clamp-2">{post.excerpt}</p>}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
@@ -195,4 +134,4 @@ const Blog = () => {
   );
 };
 
-export default Blog;
+export default CategoryPosts;

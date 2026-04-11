@@ -9,8 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import FeaturedImageUpload from "@/components/admin/FeaturedImageUpload";
 import type { Database } from "@/integrations/supabase/types";
@@ -34,6 +36,7 @@ const PostForm = () => {
   const [status, setStatus] = useState<PostStatus>("draft");
   const [author, setAuthor] = useState("");
   const [featuredImage, setFeaturedImage] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
 
   const { data: categories = [] } = useQuery({
     queryKey: ["admin-categories"],
@@ -65,12 +68,16 @@ const PostForm = () => {
       setStatus(post.status);
       setAuthor(post.author ?? "");
       setFeaturedImage(post.featured_image ?? null);
+      setVideoUrl((post as any).video_url ?? "");
     }
   }, [post]);
 
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const isVideoCategory = selectedCategory?.slug === "videos";
+
   const save = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const payload: any = {
         title,
         slug,
         content,
@@ -80,6 +87,7 @@ const PostForm = () => {
         author: author || null,
         featured_image: featuredImage,
         published_at: status === "published" ? new Date().toISOString() : null,
+        video_url: videoUrl || null,
       };
 
       if (isEdit) {
@@ -113,7 +121,47 @@ const PostForm = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>{isEdit ? "Edit Post" : "New Post"}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>{isEdit ? "Edit Post" : "New Post"}</CardTitle>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={!title}>
+                  <Eye className="mr-2 h-4 w-4" /> Preview
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Post Preview</DialogTitle>
+                </DialogHeader>
+                <article className="mt-4">
+                  {selectedCategory && (
+                    <Badge variant="secondary" className="mb-3">{selectedCategory.name}</Badge>
+                  )}
+                  <h1 className="text-3xl font-bold tracking-tight mb-2">{title || "Untitled"}</h1>
+                  {author && <p className="text-sm text-muted-foreground mb-4">By {author}</p>}
+                  {featuredImage && (
+                    <div className="rounded-lg overflow-hidden mb-6">
+                      <img src={featuredImage} alt={title} className="w-full h-auto object-cover" />
+                    </div>
+                  )}
+                  {isVideoCategory && videoUrl && (
+                    <div className="aspect-video mb-6 rounded-lg overflow-hidden">
+                      <iframe
+                        src={videoUrl.replace("watch?v=", "embed/")}
+                        className="w-full h-full"
+                        allowFullScreen
+                        title={title}
+                      />
+                    </div>
+                  )}
+                  <div
+                    className="prose prose-lg dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: content || "<p>No content yet.</p>" }}
+                  />
+                </article>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
@@ -144,6 +192,18 @@ const PostForm = () => {
               </SelectContent>
             </Select>
           </div>
+
+          {isVideoCategory && (
+            <div className="space-y-2">
+              <Label>Video URL</Label>
+              <Input
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+              <p className="text-xs text-muted-foreground">YouTube link for the video post</p>
+            </div>
+          )}
 
           <FeaturedImageUpload value={featuredImage} onChange={setFeaturedImage} />
 

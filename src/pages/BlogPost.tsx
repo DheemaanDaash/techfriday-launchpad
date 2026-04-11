@@ -44,28 +44,52 @@ const BlogPost = () => {
     enabled: !!post?.category_id,
   });
 
-  // SEO: Update document title and meta
+  // SEO: Update document title, meta description, and OG tags
   useEffect(() => {
     if (!post) return;
     const originalTitle = document.title;
     document.title = `${post.title} — TechFriday`;
 
-    let metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
-    const originalDesc = metaDesc?.content;
-    if (metaDesc && post.excerpt) {
-      metaDesc.content = post.excerpt;
-    } else if (post.excerpt) {
-      metaDesc = document.createElement("meta");
-      metaDesc.name = "description";
-      metaDesc.content = post.excerpt;
-      document.head.appendChild(metaDesc);
-    }
+    const setMeta = (property: string, content: string, isOg = false) => {
+      const selector = isOg ? `meta[property="${property}"]` : `meta[name="${property}"]`;
+      let tag = document.querySelector(selector) as HTMLMetaElement | null;
+      if (tag) {
+        tag.setAttribute("data-orig", tag.content);
+        tag.content = content;
+      } else {
+        tag = document.createElement("meta");
+        if (isOg) tag.setAttribute("property", property);
+        else tag.name = property;
+        tag.content = content;
+        tag.setAttribute("data-dynamic", "true");
+        document.head.appendChild(tag);
+      }
+    };
+
+    if (post.excerpt) setMeta("description", post.excerpt);
+    setMeta("og:title", post.title, true);
+    if (post.excerpt) setMeta("og:description", post.excerpt, true);
+    if (post.featured_image) setMeta("og:image", post.featured_image, true);
+    setMeta("og:type", "article", true);
 
     return () => {
       document.title = originalTitle;
-      if (metaDesc && originalDesc !== undefined) metaDesc.content = originalDesc ?? "";
+      document.querySelectorAll("meta[data-dynamic]").forEach((el) => el.remove());
+      document.querySelectorAll("meta[data-orig]").forEach((el) => {
+        (el as HTMLMetaElement).content = el.getAttribute("data-orig") ?? "";
+        el.removeAttribute("data-orig");
+      });
     };
   }, [post]);
+
+  const isVideoPost = (post?.categories as any)?.slug === "videos";
+  const videoUrl = (post as any)?.video_url;
+
+  const getEmbedUrl = (url: string) => {
+    if (url.includes("youtube.com/watch")) return url.replace("watch?v=", "embed/");
+    if (url.includes("youtu.be/")) return url.replace("youtu.be/", "www.youtube.com/embed/");
+    return url;
+  };
 
   if (isLoading) {
     return (
@@ -85,9 +109,7 @@ const BlogPost = () => {
         <h1 className="text-2xl font-bold mb-2">Post not found</h1>
         <p className="text-muted-foreground mb-4">The post you're looking for doesn't exist or has been removed.</p>
         <Link to="/blog">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Blog
-          </Button>
+          <Button variant="outline"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Blog</Button>
         </Link>
       </div>
     );
@@ -95,7 +117,6 @@ const BlogPost = () => {
 
   return (
     <>
-      {/* JSON-LD structured data */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -110,10 +131,7 @@ const BlogPost = () => {
             author: post.author
               ? { "@type": "Person", name: post.author }
               : { "@type": "Organization", name: "TechFriday" },
-            publisher: {
-              "@type": "Organization",
-              name: "TechFriday",
-            },
+            publisher: { "@type": "Organization", name: "TechFriday" },
           }),
         }}
       />
@@ -124,44 +142,31 @@ const BlogPost = () => {
         </Link>
 
         {post.categories && (
-          <Badge variant="secondary" className="mb-3">
-            {(post.categories as any).name}
-          </Badge>
+          <Badge variant="secondary" className="mb-3">{(post.categories as any).name}</Badge>
         )}
 
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">{post.title}</h1>
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground mb-8">
-          {post.author && (
-            <span className="flex items-center gap-1">
-              <User className="h-4 w-4" /> {post.author}
-            </span>
-          )}
-          {post.published_at && (
-            <span className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" /> {format(new Date(post.published_at), "MMMM d, yyyy")}
-            </span>
-          )}
+          {post.author && <span className="flex items-center gap-1"><User className="h-4 w-4" /> {post.author}</span>}
+          {post.published_at && <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {format(new Date(post.published_at), "MMMM d, yyyy")}</span>}
         </div>
 
-        {post.featured_image && (
-          <div className="rounded-lg overflow-hidden mb-8">
-            <img
-              src={post.featured_image}
-              alt={post.title}
-              className="w-full h-auto object-cover"
-            />
+        {isVideoPost && videoUrl && (
+          <div className="aspect-video rounded-lg overflow-hidden mb-8">
+            <iframe src={getEmbedUrl(videoUrl)} className="w-full h-full" allowFullScreen title={post.title} />
           </div>
         )}
 
-        {/* Post content rendered as HTML from TipTap */}
-        <div
-          className="prose prose-lg dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: post.content ?? "" }}
-        />
+        {post.featured_image && (
+          <div className="rounded-lg overflow-hidden mb-8">
+            <img src={post.featured_image} alt={post.title} className="w-full h-auto object-cover" />
+          </div>
+        )}
+
+        <div className="prose prose-lg dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: post.content ?? "" }} />
       </article>
 
-      {/* Related posts */}
       {relatedPosts.length > 0 && (
         <section className="mx-auto max-w-3xl px-4 sm:px-6 pb-16">
           <h2 className="text-xl font-semibold mb-4">Related Posts</h2>
@@ -171,25 +176,14 @@ const BlogPost = () => {
                 <Card className="overflow-hidden hover:shadow-md transition-shadow group h-full">
                   {rp.featured_image ? (
                     <div className="aspect-video overflow-hidden">
-                      <img
-                        src={rp.featured_image}
-                        alt={rp.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
+                      <img src={rp.featured_image} alt={rp.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                     </div>
                   ) : (
                     <div className="aspect-video bg-muted" />
                   )}
                   <CardContent className="p-3">
-                    <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                      {rp.title}
-                    </h3>
-                    {rp.published_at && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(rp.published_at), "MMM d, yyyy")}
-                      </p>
-                    )}
+                    <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">{rp.title}</h3>
+                    {rp.published_at && <p className="text-xs text-muted-foreground mt-1">{format(new Date(rp.published_at), "MMM d, yyyy")}</p>}
                   </CardContent>
                 </Card>
               </Link>
