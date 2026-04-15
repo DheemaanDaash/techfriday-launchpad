@@ -32,7 +32,7 @@ const Login = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <ThemeToggle />
+      <div className="fixed top-6 right-6 z-50"><ThemeToggle /></div>
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
           <img src={logo} alt="TechFriday" className="w-14 h-14 mb-2" />
