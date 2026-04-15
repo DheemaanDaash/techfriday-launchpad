@@ -18,7 +18,7 @@ const socials = [
 const Index = () => {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6">
-      <ThemeToggle />
+      <div className="fixed top-6 right-6 z-50"><ThemeToggle /></div>
 
       {/* Background glow */}
       <div className="pointer-events-none absolute inset-0">

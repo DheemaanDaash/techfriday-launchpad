@@ -18,7 +18,7 @@ const socials = [
 const ComingSoon = () => {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6">
-      <ThemeToggle />
+      <div className="fixed top-6 right-6 z-50"><ThemeToggle /></div>
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[120px] animate-pulse-glow" />
         <div className="absolute left-1/3 top-2/3 -translate-x-1/2 h-[300px] w-[300px] rounded-full bg-accent/10 blur-[100px] animate-pulse-glow" style={{ animationDelay: "1.5s" }} />
