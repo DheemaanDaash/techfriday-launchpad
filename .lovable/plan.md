@@ -1,77 +1,70 @@
 
 
-## Plan: Remaining Items + Sign Out Fix + Sidebar Logo Behavior
+The user is refining the previous TechCrunch import plan. Key clarifications:
 
-### Remaining Items from the Original Plan
+1. **Layout**: 3-column hero — Col 1: large image post, Col 2: image post (image fits Col 1's image height/proportions, but smaller card overall), Col 3: top headlines list. So Col 1 is the "lead" with bigger image, Col 2 is secondary with same image dimensions but maybe stacked layout, Col 3 is text headlines.
 
-| Item | Status |
+2. **Import button**: Generic label like "Import Posts" — no "TechCrunch" branding visible.
+
+3. **No attribution/link-back** to source needed.
+
+4. **Rewrite content** slightly using AI (Lovable AI Gateway), but **preserve quotes verbatim**.
+
+This is a focused implementation plan now. Keep it concise.
+
+## Plan: TechCrunch Import + 3-Column Hero
+
+### 1. Home Hero — 3-Column Layout (`src/pages/Home.tsx`)
+
+```text
++----------------------+----------------+----------------+
+|  Col 1: Lead Post    | Col 2: Post    | Col 3: Top     |
+|  [LARGE IMAGE]       | [IMAGE same    | Headlines      |
+|                      |  height as     |                |
+|  Title (xl)          |  Col 1 image]  | 1. Headline... |
+|  Excerpt             | Title (lg)     | 2. Headline... |
+|                      | Excerpt        | 3. Headline... |
+|                      |                | 4. Headline... |
+|                      |                | 5. Headline... |
++----------------------+----------------+----------------+
+```
+
+- Grid: `lg:grid-cols-4` → Col 1 spans 2, Col 2 spans 1, Col 3 spans 1
+- Col 1 & 2 images use the same `aspect-video` ratio so heights align
+- Col 3 = ordered headline list (next 5 posts)
+- Video section moves below hero (kept as standalone row)
+- Recent posts grid + newsletter remain below
+
+### 2. Import Feature
+
+**Connector**: Firecrawl (for scraping) + Lovable AI Gateway (for rewriting).
+
+**Edge function**: `supabase/functions/import-posts/index.ts`
+- Calls Firecrawl `scrape` on `https://techcrunch.com` to get latest article links + metadata
+- For each article (limit 5): scrape full content → send to Lovable AI (`google/gemini-2.5-flash`) with prompt: *"Rewrite this article in your own words. Keep all direct quotes (text inside quotation marks) exactly as-is. Return JSON: {title, excerpt, content}."*
+- Insert into `posts` table as `draft` status, default category = "News", featured_image from scraped og:image
+- Return count of imported posts
+
+**Admin UI** (`src/pages/admin/Posts.tsx`):
+- Add "Import Posts" button (no source name) next to "New Post"
+- On click → confirmation dialog → invoke edge function → show toast with count → refresh list
+
+### 3. Files to Create / Edit
+
+| File | Action |
 |------|--------|
-| Post preview before publishing | Not built |
-| `/category/:slug` route | Not built |
-| Home page hero with latest posts | Placeholder only |
-| Admin-side pagination | Not built |
-| Search (admin + public) | Not built |
-| OG image meta tags | Not built |
-| Dark/light mode QA | Not done |
-| Sign out redirect | Needs improvement |
-| Sidebar collapsed logo | Needs fix |
+| `supabase/functions/import-posts/index.ts` | Create |
+| `src/pages/Home.tsx` | Rewrite hero to 3-column |
+| `src/pages/admin/Posts.tsx` | Add Import button + dialog |
 
-### What This Plan Covers
+### 4. Prerequisites
 
-**1. Admin Sidebar — collapsed logo fix**
-- When sidebar is collapsed, show only the favicon/logo image (no text) at its current size so menu items don't shift position
-- Currently the logo already shows when collapsed, but the `SidebarGroupLabel` layout changes. Fix: always render the logo `img` at a fixed size; only conditionally render the text span. Ensure the label container has consistent height/padding.
+- Connect **Firecrawl** connector (will prompt user)
+- Lovable AI Gateway (`LOVABLE_API_KEY`) — already available
 
-**2. Sign Out — redirect to /admin/login**
-- Update the `signOut` function call in `AdminSidebar.tsx` to navigate to `/admin/login` after signing out using `useNavigate`.
+### 5. Notes
 
-**3. Post Preview (Phase 3 remaining)**
-- Add a "Preview" button in `PostForm.tsx` that opens a dialog/modal rendering the post content with the same `prose` styling used on the public blog post page.
-
-**4. `/category/:slug` route (Phase 4 remaining)**
-- Create `src/pages/CategoryPosts.tsx` — fetches category by slug, lists published posts filtered by that category with pagination.
-- Add route `/category/:slug` in `App.tsx` under the Layout wrapper.
-
-**5. Home page hero section (Phase 4 remaining)**
-- Rebuild `Home.tsx` with a hero showing latest 3-4 featured/published posts (large card + smaller cards grid).
-- Below hero: recent posts grid section.
-
-**6. Admin pagination (Phase 5)**
-- Add pagination controls to the Posts list page in admin (`src/pages/admin/Posts.tsx`), 20 posts per page.
-
-**7. Search (Phase 5)**
-- **Public**: Add a search bar to the Blog page that filters posts by title/excerpt using Supabase `ilike`.
-- **Admin**: Add a search input above the Posts table that filters by title.
-
-**8. OG meta tags (Phase 5)**
-- In `BlogPost.tsx`, add `<meta property="og:image">` and `og:title`/`og:description` using `document.head` or a `<Helmet>`-style approach (using direct DOM manipulation since react-helmet isn't installed).
-
-**9. Dark/light mode QA**
-- Review all pages for theme consistency — ensure cards, backgrounds, text colors work in both modes.
-
-### Technical Details
-
-**Files to create:**
-- `src/pages/CategoryPosts.tsx`
-
-**Files to modify:**
-- `src/components/AdminSidebar.tsx` — fix collapsed logo, improve sign-out with redirect
-- `src/pages/admin/PostForm.tsx` — add preview dialog
-- `src/pages/Home.tsx` — rebuild with hero + recent posts
-- `src/pages/admin/Posts.tsx` — add pagination + search
-- `src/pages/Blog.tsx` — add search bar
-- `src/pages/BlogPost.tsx` — add OG meta tags
-- `src/App.tsx` — add `/category/:slug` route
-
-**No database changes needed** — all features use existing tables and queries.
-
-### Implementation Order
-1. Sidebar fix (logo + sign out) — quick win
-2. Post preview modal
-3. Home page hero
-4. Category page + route
-5. Admin pagination + search
-6. Public blog search
-7. OG meta tags
-8. Dark/light mode review
+- Imports default to `draft` so admin reviews before publishing
+- Quotes preserved verbatim per AI prompt instruction
+- No source attribution or back-links inserted into post content
 
