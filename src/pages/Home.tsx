@@ -8,6 +8,25 @@ import { Calendar, User, ArrowRight, Play } from "lucide-react";
 import { format } from "date-fns";
 
 const Home = () => {
+  // Hero posts: 2 lead posts with images + 5 headlines (7 total)
+  const { data: heroPosts = [], isLoading: heroLoading } = useQuery({
+    queryKey: ["home-hero-posts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("id, title, slug, excerpt, featured_image, published_at, categories(name, slug)")
+        .eq("status", "published")
+        .order("published_at", { ascending: false })
+        .limit(7);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const leadPost = heroPosts[0];
+  const secondaryPost = heroPosts[1];
+  const headlines = heroPosts.slice(2, 7);
+
   // Latest video post
   const { data: latestVideo } = useQuery({
     queryKey: ["home-latest-video"],
@@ -30,22 +49,7 @@ const Home = () => {
     },
   });
 
-  // Top 3 headlines
-  const { data: headlines = [] } = useQuery({
-    queryKey: ["home-headlines"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("id, title, slug, published_at, categories(name)")
-        .eq("status", "published")
-        .order("published_at", { ascending: false })
-        .limit(3);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Recent posts for grid
+  // Recent posts grid (skip the 7 already shown in hero)
   const { data: recentPosts = [], isLoading } = useQuery({
     queryKey: ["home-recent-posts"],
     queryFn: async () => {
@@ -54,7 +58,7 @@ const Home = () => {
         .select("*, categories(name, slug)")
         .eq("status", "published")
         .order("published_at", { ascending: false })
-        .limit(6);
+        .range(7, 12);
       if (error) throw error;
       return data;
     },
