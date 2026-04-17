@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, Download, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
 const POSTS_PER_PAGE = 20;
@@ -18,6 +18,8 @@ const Posts = () => {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const { data: result, isLoading } = useQuery({
     queryKey: ["admin-posts", search, page],
@@ -56,13 +58,56 @@ const Posts = () => {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("import-posts");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: "Import complete",
+        description: `${data?.imported ?? 0} of ${data?.attempted ?? 0} posts imported as drafts.`,
+      });
+      qc.invalidateQueries({ queryKey: ["admin-posts"] });
+      qc.invalidateQueries({ queryKey: ["admin-post-count"] });
+      qc.invalidateQueries({ queryKey: ["admin-draft-count"] });
+      setImportOpen(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Import failed";
+      toast({ title: "Import failed", description: msg, variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-2 flex-wrap">
         <h1 className="text-3xl font-bold">Posts</h1>
-        <Button asChild>
-          <Link to="/admin/posts/new"><Plus className="mr-2 h-4 w-4" />New Post</Link>
-        </Button>
+        <div className="flex gap-2">
+          <AlertDialog open={importOpen} onOpenChange={setImportOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline"><Download className="mr-2 h-4 w-4" />Import Posts</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Import latest posts?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will fetch the 5 most recent articles, rewrite them with AI (quotes preserved verbatim), and save them as drafts in the News category for review. May take 30–60 seconds.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={importing}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); handleImport(); }} disabled={importing}>
+                  {importing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing...</>) : "Start Import"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button asChild>
+            <Link to="/admin/posts/new"><Plus className="mr-2 h-4 w-4" />New Post</Link>
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
