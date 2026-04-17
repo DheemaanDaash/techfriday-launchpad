@@ -8,6 +8,25 @@ import { Calendar, User, ArrowRight, Play } from "lucide-react";
 import { format } from "date-fns";
 
 const Home = () => {
+  // Hero posts: 2 lead posts with images + 5 headlines (7 total)
+  const { data: heroPosts = [], isLoading: heroLoading } = useQuery({
+    queryKey: ["home-hero-posts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("id, title, slug, excerpt, featured_image, published_at, categories(name, slug)")
+        .eq("status", "published")
+        .order("published_at", { ascending: false })
+        .limit(7);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const leadPost = heroPosts[0];
+  const secondaryPost = heroPosts[1];
+  const headlines = heroPosts.slice(2, 7);
+
   // Latest video post
   const { data: latestVideo } = useQuery({
     queryKey: ["home-latest-video"],
@@ -30,22 +49,7 @@ const Home = () => {
     },
   });
 
-  // Top 3 headlines
-  const { data: headlines = [] } = useQuery({
-    queryKey: ["home-headlines"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("id, title, slug, published_at, categories(name)")
-        .eq("status", "published")
-        .order("published_at", { ascending: false })
-        .limit(3);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Recent posts for grid
+  // Recent posts grid (skip the 7 already shown in hero)
   const { data: recentPosts = [], isLoading } = useQuery({
     queryKey: ["home-recent-posts"],
     queryFn: async () => {
@@ -54,7 +58,7 @@ const Home = () => {
         .select("*, categories(name, slug)")
         .eq("status", "published")
         .order("published_at", { ascending: false })
-        .limit(6);
+        .range(7, 12);
       if (error) throw error;
       return data;
     },
@@ -69,74 +73,118 @@ const Home = () => {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
-      {/* Hero Section — 2 columns */}
-      <section className="grid gap-8 lg:grid-cols-5 mb-16">
-        {/* Column 1 — Latest Video */}
-        <div className="lg:col-span-3">
-          {latestVideo ? (
+      {/* Hero — 3 columns: Lead post (2/4) + Secondary post (1/4) + Headlines (1/4) */}
+      <section className="grid gap-6 lg:grid-cols-4 mb-12">
+        {/* Col 1 — Lead Post */}
+        <div className="lg:col-span-2">
+          {heroLoading ? (
             <div>
+              <Skeleton className="aspect-video w-full rounded-xl" />
+              <Skeleton className="h-7 w-3/4 mt-4" />
+              <Skeleton className="h-4 w-full mt-2" />
+            </div>
+          ) : leadPost ? (
+            <Link to={`/blog/${leadPost.slug}`} className="block group">
               <div className="aspect-video rounded-xl overflow-hidden bg-muted shadow-lg">
-                {(latestVideo as any).video_url ? (
-                  <iframe
-                    src={getEmbedUrl((latestVideo as any).video_url)}
-                    className="w-full h-full"
-                    allowFullScreen
-                    title={latestVideo.title}
+                {leadPost.featured_image ? (
+                  <img
+                    src={leadPost.featured_image}
+                    alt={leadPost.title}
+                    className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
                   />
-                ) : latestVideo.featured_image ? (
-                  <img src={latestVideo.featured_image} alt={latestVideo.title} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Play className="h-16 w-16 text-muted-foreground" />
-                  </div>
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">No image</div>
                 )}
               </div>
-              <Link to={`/blog/${latestVideo.slug}`} className="block mt-3">
-                <h2 className="text-xl font-bold hover:text-primary transition-colors line-clamp-2">
-                  {latestVideo.title}
+              <div className="mt-4">
+                {leadPost.categories && (
+                  <Badge variant="secondary" className="mb-2 text-xs">
+                    {(leadPost.categories as any).name}
+                  </Badge>
+                )}
+                <h2 className="text-2xl sm:text-3xl font-bold leading-tight group-hover:text-primary transition-colors line-clamp-2">
+                  {leadPost.title}
                 </h2>
-              </Link>
-              {latestVideo.published_at && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {format(new Date(latestVideo.published_at), "MMM d, yyyy")}
-                </p>
-              )}
-            </div>
+                {leadPost.excerpt && (
+                  <p className="text-muted-foreground mt-2 line-clamp-2">{leadPost.excerpt}</p>
+                )}
+                {leadPost.published_at && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {format(new Date(leadPost.published_at), "MMM d, yyyy")}
+                  </p>
+                )}
+              </div>
+            </Link>
           ) : (
             <div className="aspect-video rounded-xl bg-muted flex items-center justify-center">
-              <p className="text-muted-foreground">No video posts yet</p>
+              <p className="text-muted-foreground">No posts yet</p>
             </div>
           )}
         </div>
 
-        {/* Column 2 — Top Headlines */}
-        <div className="lg:col-span-2">
-          <h3 className="text-lg font-bold uppercase tracking-wider text-primary mb-4 border-b border-primary pb-2">
+        {/* Col 2 — Secondary Post */}
+        <div className="lg:col-span-1">
+          {heroLoading ? (
+            <div>
+              <Skeleton className="aspect-video w-full rounded-xl" />
+              <Skeleton className="h-5 w-full mt-3" />
+            </div>
+          ) : secondaryPost ? (
+            <Link to={`/blog/${secondaryPost.slug}`} className="block group">
+              <div className="aspect-video rounded-xl overflow-hidden bg-muted">
+                {secondaryPost.featured_image ? (
+                  <img
+                    src={secondaryPost.featured_image}
+                    alt={secondaryPost.title}
+                    className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">No image</div>
+                )}
+              </div>
+              <div className="mt-3">
+                {secondaryPost.categories && (
+                  <Badge variant="secondary" className="mb-2 text-xs">
+                    {(secondaryPost.categories as any).name}
+                  </Badge>
+                )}
+                <h3 className="text-lg font-bold leading-snug group-hover:text-primary transition-colors line-clamp-3">
+                  {secondaryPost.title}
+                </h3>
+                {secondaryPost.excerpt && (
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{secondaryPost.excerpt}</p>
+                )}
+              </div>
+            </Link>
+          ) : null}
+        </div>
+
+        {/* Col 3 — Top Headlines */}
+        <div className="lg:col-span-1">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-primary mb-3 border-b border-primary pb-2">
             Top Headlines
           </h3>
           {headlines.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No posts yet.</p>
+            <p className="text-muted-foreground text-sm">No more posts.</p>
           ) : (
-            <ul className="space-y-4">
+            <ul className="space-y-3">
               {headlines.map((post, i) => (
-                <li key={post.id} className="flex gap-3 items-start group">
-                  <span className="text-2xl font-bold text-primary/40 leading-none mt-0.5">
+                <li key={post.id} className="flex gap-2.5 items-start group pb-3 border-b border-border last:border-0">
+                  <span className="text-lg font-bold text-primary/50 leading-none mt-0.5 shrink-0">
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <div className="flex-1">
-                    <Link to={`/blog/${post.slug}`} className="font-semibold leading-snug hover:text-primary transition-colors line-clamp-2 block">
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      to={`/blog/${post.slug}`}
+                      className="text-sm font-semibold leading-snug hover:text-primary transition-colors line-clamp-3 block"
+                    >
                       {post.title}
                     </Link>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                      {post.categories && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                          {(post.categories as any).name}
-                        </Badge>
-                      )}
-                      {post.published_at && (
-                        <span>{format(new Date(post.published_at), "MMM d")}</span>
-                      )}
-                    </div>
+                    {post.published_at && (
+                      <span className="text-[11px] text-muted-foreground mt-1 block">
+                        {format(new Date(post.published_at), "MMM d")}
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}
@@ -144,6 +192,48 @@ const Home = () => {
           )}
         </div>
       </section>
+
+      {/* Latest Video Row */}
+      {latestVideo && (
+        <section className="mb-16">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <Play className="h-5 w-5 text-primary" /> Latest Video
+          </h2>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 aspect-video rounded-xl overflow-hidden bg-muted shadow-lg">
+              {(latestVideo as any).video_url ? (
+                <iframe
+                  src={getEmbedUrl((latestVideo as any).video_url)}
+                  className="w-full h-full"
+                  allowFullScreen
+                  title={latestVideo.title}
+                />
+              ) : latestVideo.featured_image ? (
+                <img src={latestVideo.featured_image} alt={latestVideo.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Play className="h-16 w-16 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+            <div className="lg:col-span-1 flex flex-col justify-center">
+              <Link to={`/blog/${latestVideo.slug}`}>
+                <h3 className="text-xl font-bold hover:text-primary transition-colors line-clamp-3">
+                  {latestVideo.title}
+                </h3>
+              </Link>
+              {latestVideo.excerpt && (
+                <p className="text-muted-foreground mt-2 line-clamp-3">{latestVideo.excerpt}</p>
+              )}
+              {latestVideo.published_at && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  {format(new Date(latestVideo.published_at), "MMM d, yyyy")}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Recent Posts Grid */}
       <section className="mb-16">
