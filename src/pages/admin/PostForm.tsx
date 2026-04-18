@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Eye } from "lucide-react";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import FeaturedImageUpload from "@/components/admin/FeaturedImageUpload";
+import { useAuth } from "@/hooks/useAuth";
 import type { Database } from "@/integrations/supabase/types";
 
 type PostStatus = Database["public"]["Enums"]["post_status"];
@@ -27,6 +28,7 @@ const PostForm = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -47,16 +49,24 @@ const PostForm = () => {
     },
   });
 
-  const { data: post, isLoading: postLoading } = useQuery({
+  const { data: post, isLoading: postLoading, error: postError } = useQuery({
     queryKey: ["admin-post", id],
     queryFn: async () => {
       if (!isEdit) return null;
-      const { data, error } = await supabase.from("posts").select("*").eq("id", id).single();
+      const { data, error } = await supabase.from("posts").select("*").eq("id", id).maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error("Post not found or you don't have access.");
       return data;
     },
-    enabled: isEdit,
+    enabled: isEdit && !!user,
+    retry: 1,
   });
+
+  useEffect(() => {
+    if (postError) {
+      toast({ title: "Failed to load post", description: (postError as Error).message, variant: "destructive" });
+    }
+  }, [postError, toast]);
 
   useEffect(() => {
     if (post) {
@@ -109,8 +119,32 @@ const PostForm = () => {
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  if (isEdit && postLoading) {
-    return <p className="text-muted-foreground">Loading...</p>;
+  if (isEdit && (authLoading || (postLoading && !postError))) {
+    return (
+      <div className="flex items-center gap-3 text-muted-foreground">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        Loading post...
+      </div>
+    );
+  }
+
+  if (isEdit && postError) {
+    return (
+      <div className="max-w-3xl space-y-4">
+        <Button variant="ghost" onClick={() => navigate("/admin/posts")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />Back to Posts
+        </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>Couldn't load post</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">{(postError as Error).message}</p>
+            <Button onClick={() => navigate("/admin/posts")}>Back to Posts</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
