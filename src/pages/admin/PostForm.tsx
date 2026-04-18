@@ -50,7 +50,7 @@ const PostForm = () => {
   });
 
   const { data: post, isLoading: postLoading, error: postError } = useQuery({
-    queryKey: ["admin-post", id],
+    queryKey: ["admin-post", id, user?.id],
     queryFn: async () => {
       if (!isEdit) return null;
       const { data, error } = await supabase.from("posts").select("*").eq("id", id).maybeSingle();
@@ -58,7 +58,7 @@ const PostForm = () => {
       if (!data) throw new Error("Post not found or you don't have access.");
       return data;
     },
-    enabled: isEdit && !!user,
+    enabled: isEdit && !authLoading && !!user,
     retry: 1,
   });
 
