@@ -1,70 +1,41 @@
 
 
-The user is refining the previous TechCrunch import plan. Key clarifications:
+## Plan: Fix Admin Session Hang + Edit Post Not Working
 
-1. **Layout**: 3-column hero — Col 1: large image post, Col 2: image post (image fits Col 1's image height/proportions, but smaller card overall), Col 3: top headlines list. So Col 1 is the "lead" with bigger image, Col 2 is secondary with same image dimensions but maybe stacked layout, Col 3 is text headlines.
+### Root Causes
 
-2. **Import button**: Generic label like "Import Posts" — no "TechCrunch" branding visible.
+**1. Infinite loading on stale session**
+- `useAuth.tsx` sets `loading=true` initially. If the stored refresh token is expired, `supabase.auth.getSession()` can resolve with `null`, but the `onAuthStateChange` race + `await checkAdmin()` inside the listener can cause `setLoading(false)` to never fire reliably (Supabase guidance: never `await` inside `onAuthStateChange`).
+- When a session silently expires while the admin tab is open, nothing forces a redirect — queries just fail and the UI keeps spinning.
+- `ProtectedRoute` only redirects when `!user || !isAdmin` AFTER `loading=false`. If loading sticks, it spins forever.
 
-3. **No attribution/link-back** to source needed.
+**2. Edit post not working**
+- Same root cause: `PostForm` fires `useQuery(["admin-post", id])` immediately. If the session is mid-refresh or expired, the query returns no data, `postLoading` stays true, and the form never renders. Combined with the auth hang, clicking Edit appears dead.
+- Secondary risk: `.single()` throws if RLS blocks the row — error isn't surfaced.
 
-4. **Rewrite content** slightly using AI (Lovable AI Gateway), but **preserve quotes verbatim**.
+### Fixes
 
-This is a focused implementation plan now. Keep it concise.
+**A. `src/hooks/useAuth.tsx`** — make auth bulletproof
+- Set up `onAuthStateChange` listener FIRST, then call `getSession()` (correct order per Supabase docs).
+- Move `checkAdmin` out of the async listener — use a `setTimeout(() => checkAdmin(...), 0)` "fire-and-forget" pattern to avoid deadlocks.
+- Always call `setLoading(false)` in a `finally` block on `getSession()`.
+- Listen for `TOKEN_REFRESHED` failure / `SIGNED_OUT` events: when session becomes null after being non-null, clear state so `ProtectedRoute` redirects to login.
+- Add a hard timeout (e.g., 5s) — if loading hasn't resolved, force `loading=false` and `user=null` so the user lands on login instead of an infinite spinner.
 
-## Plan: TechCrunch Import + 3-Column Hero
+**B. `src/components/ProtectedRoute.tsx`** — handle expired sessions gracefully
+- Already redirects when `!user`. Add a toast/notice when redirect happens due to expiry (optional).
 
-### 1. Home Hero — 3-Column Layout (`src/pages/Home.tsx`)
+**C. `src/pages/admin/PostForm.tsx`** — handle query failures
+- Add `error` from `useQuery` and show an error state with "Back to Posts" instead of spinning.
+- Gate the query on `useAuth().user` being present (`enabled: isEdit && !!user`).
+- Surface the toast on query error.
 
-```text
-+----------------------+----------------+----------------+
-|  Col 1: Lead Post    | Col 2: Post    | Col 3: Top     |
-|  [LARGE IMAGE]       | [IMAGE same    | Headlines      |
-|                      |  height as     |                |
-|  Title (xl)          |  Col 1 image]  | 1. Headline... |
-|  Excerpt             | Title (lg)     | 2. Headline... |
-|                      | Excerpt        | 3. Headline... |
-|                      |                | 4. Headline... |
-|                      |                | 5. Headline... |
-+----------------------+----------------+----------------+
-```
+### Files to Edit
 
-- Grid: `lg:grid-cols-4` → Col 1 spans 2, Col 2 spans 1, Col 3 spans 1
-- Col 1 & 2 images use the same `aspect-video` ratio so heights align
-- Col 3 = ordered headline list (next 5 posts)
-- Video section moves below hero (kept as standalone row)
-- Recent posts grid + newsletter remain below
-
-### 2. Import Feature
-
-**Connector**: Firecrawl (for scraping) + Lovable AI Gateway (for rewriting).
-
-**Edge function**: `supabase/functions/import-posts/index.ts`
-- Calls Firecrawl `scrape` on `https://techcrunch.com` to get latest article links + metadata
-- For each article (limit 5): scrape full content → send to Lovable AI (`google/gemini-2.5-flash`) with prompt: *"Rewrite this article in your own words. Keep all direct quotes (text inside quotation marks) exactly as-is. Return JSON: {title, excerpt, content}."*
-- Insert into `posts` table as `draft` status, default category = "News", featured_image from scraped og:image
-- Return count of imported posts
-
-**Admin UI** (`src/pages/admin/Posts.tsx`):
-- Add "Import Posts" button (no source name) next to "New Post"
-- On click → confirmation dialog → invoke edge function → show toast with count → refresh list
-
-### 3. Files to Create / Edit
-
-| File | Action |
+| File | Change |
 |------|--------|
-| `supabase/functions/import-posts/index.ts` | Create |
-| `src/pages/Home.tsx` | Rewrite hero to 3-column |
-| `src/pages/admin/Posts.tsx` | Add Import button + dialog |
+| `src/hooks/useAuth.tsx` | Reorder listener/getSession, fire-and-forget admin check, finally block, expiry handling, safety timeout |
+| `src/pages/admin/PostForm.tsx` | Handle query error, gate on user, show error UI |
 
-### 4. Prerequisites
-
-- Connect **Firecrawl** connector (will prompt user)
-- Lovable AI Gateway (`LOVABLE_API_KEY`) — already available
-
-### 5. Notes
-
-- Imports default to `draft` so admin reviews before publishing
-- Quotes preserved verbatim per AI prompt instruction
-- No source attribution or back-links inserted into post content
+No DB / config changes needed.
 
