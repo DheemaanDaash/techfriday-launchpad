@@ -67,7 +67,7 @@ const RichTextEditor = ({ content, onChange, placeholder = "Write your post cont
     if (!editor) return;
     const incoming = content || "";
     if (editor.getHTML() === incoming) return;
-    editor.commands.setContent(incoming, false);
+    editor.commands.setContent(incoming, { emitUpdate: false });
   }, [content, editor]);
 
 
