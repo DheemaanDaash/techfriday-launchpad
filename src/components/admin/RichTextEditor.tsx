@@ -62,6 +62,16 @@ const RichTextEditor = ({ content, onChange, placeholder = "Write your post cont
     },
   });
 
+  // Sync external content into the editor (e.g. when post data loads async)
+  useEffect(() => {
+    if (!editor) return;
+    const incoming = content || "";
+    if (editor.getHTML() === incoming) return;
+    editor.commands.setContent(incoming, false);
+  }, [content, editor]);
+
+
+
   const uploadImage = useCallback(async (file: File) => {
     const ext = file.name.split(".").pop();
     const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
