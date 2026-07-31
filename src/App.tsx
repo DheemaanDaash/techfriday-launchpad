@@ -29,16 +29,16 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Coming soon as default */}
-            <Route path="/" element={<ComingSoon />} />
-
-            {/* Main site (hidden for now) */}
+            {/* Main site */}
             <Route element={<Layout />}>
-              <Route path="/home" element={<Home />} />
+              <Route path="/" element={<Home />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/category/:slug" element={<CategoryPosts />} />
             </Route>
+
+            {/* Coming soon page kept available but not default */}
+            <Route path="/coming-soon" element={<ComingSoon />} />
 
             {/* Admin */}
             <Route path="/admin/login" element={<Login />} />
