@@ -32,6 +32,8 @@ const community = [
 ];
 
 const Footer = () => {
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="border-t border-border bg-muted/30">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12">
@@ -45,7 +47,7 @@ const Footer = () => {
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2020–2025 TechFriday. All rights reserved.
+              © 2020–{currentYear} TechFriday. All rights reserved.
             </p>
           </div>
 
