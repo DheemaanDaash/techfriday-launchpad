@@ -5,7 +5,7 @@ import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,16 @@ const RichTextEditor = ({ content, onChange, placeholder = "Write your post cont
       },
     },
   });
+
+  // Sync external content into the editor (e.g. when post data loads async)
+  useEffect(() => {
+    if (!editor) return;
+    const incoming = content || "";
+    if (editor.getHTML() === incoming) return;
+    editor.commands.setContent(incoming, { emitUpdate: false });
+  }, [content, editor]);
+
+
 
   const uploadImage = useCallback(async (file: File) => {
     const ext = file.name.split(".").pop();
