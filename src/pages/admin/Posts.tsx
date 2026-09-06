@@ -49,6 +49,53 @@ const Posts = () => {
   const posts = result?.posts ?? [];
   const totalPages = Math.ceil((result?.total ?? 0) / POSTS_PER_PAGE);
 
+  const { data: categories = [] } = useQuery({
+    queryKey: ["admin-categories-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categories").select("id, name").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const allSelected = posts.length > 0 && selected.length === posts.length;
+  const selectedCount = selected.length;
+
+  const toggleAll = () => setSelected(allSelected ? [] : posts.map((p) => p.id));
+  const toggleOne = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["admin-posts"] });
+    qc.invalidateQueries({ queryKey: ["admin-post-count"] });
+    qc.invalidateQueries({ queryKey: ["admin-published-count"] });
+    qc.invalidateQueries({ queryKey: ["admin-draft-count"] });
+  };
+
+  const bulkUpdate = useMutation({
+    mutationFn: async (patch: Record<string, unknown>) => {
+      const { error } = await supabase.from("posts").update(patch).in("id", selected);
+      if (error) throw error;
+    },
+    onSuccess: (_d, patch) => {
+      invalidateAll();
+      toast({ title: `Updated ${selectedCount} post${selectedCount === 1 ? "" : "s"}` });
+      setSelected([]);
+      setBulkCategory("");
+      setBulkAuthor("");
+      void patch;
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const setStatus = (status: "published" | "draft") =>
+    bulkUpdate.mutate(
+      status === "published"
+        ? { status, published_at: new Date().toISOString() }
+        : { status },
+    );
+
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("posts").delete().eq("id", id);
