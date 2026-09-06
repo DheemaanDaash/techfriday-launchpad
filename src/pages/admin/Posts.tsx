@@ -72,8 +72,9 @@ const Posts = () => {
     qc.invalidateQueries({ queryKey: ["admin-draft-count"] });
   };
 
+  type PostPatch = { status?: "published" | "draft"; published_at?: string; category_id?: string; author?: string };
   const bulkUpdate = useMutation({
-    mutationFn: async (patch: Record<string, unknown>) => {
+    mutationFn: async (patch: PostPatch) => {
       const { error } = await supabase.from("posts").update(patch).in("id", selected);
       if (error) throw error;
     },
