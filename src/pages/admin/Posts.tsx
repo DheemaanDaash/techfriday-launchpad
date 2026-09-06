@@ -5,10 +5,12 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, Download, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, Download, Loader2, X } from "lucide-react";
 import { format } from "date-fns";
 
 const POSTS_PER_PAGE = 20;
@@ -20,6 +22,10 @@ const Posts = () => {
   const [page, setPage] = useState(1);
   const [importOpen, setImportOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [bulkAuthor, setBulkAuthor] = useState("");
+
 
   const { data: result, isLoading } = useQuery({
     queryKey: ["admin-posts", search, page],
@@ -42,6 +48,54 @@ const Posts = () => {
 
   const posts = result?.posts ?? [];
   const totalPages = Math.ceil((result?.total ?? 0) / POSTS_PER_PAGE);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["admin-categories-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categories").select("id, name").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const allSelected = posts.length > 0 && selected.length === posts.length;
+  const selectedCount = selected.length;
+
+  const toggleAll = () => setSelected(allSelected ? [] : posts.map((p) => p.id));
+  const toggleOne = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["admin-posts"] });
+    qc.invalidateQueries({ queryKey: ["admin-post-count"] });
+    qc.invalidateQueries({ queryKey: ["admin-published-count"] });
+    qc.invalidateQueries({ queryKey: ["admin-draft-count"] });
+  };
+
+  type PostPatch = { status?: "published" | "draft"; published_at?: string; category_id?: string; author?: string };
+  const bulkUpdate = useMutation({
+    mutationFn: async (patch: PostPatch) => {
+      const { error } = await supabase.from("posts").update(patch).in("id", selected);
+      if (error) throw error;
+    },
+    onSuccess: (_d, patch) => {
+      invalidateAll();
+      toast({ title: `Updated ${selectedCount} post${selectedCount === 1 ? "" : "s"}` });
+      setSelected([]);
+      setBulkCategory("");
+      setBulkAuthor("");
+      void patch;
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const setStatus = (status: "published" | "draft") =>
+    bulkUpdate.mutate(
+      status === "published"
+        ? { status, published_at: new Date().toISOString() }
+        : { status },
+    );
+
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -121,6 +175,46 @@ const Posts = () => {
         />
       </div>
 
+      {/* Bulk actions */}
+      {selectedCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-3">
+          <span className="text-sm font-medium">{selectedCount} selected</span>
+          <Button size="sm" variant="outline" disabled={bulkUpdate.isPending} onClick={() => setStatus("published")}>
+            Publish
+          </Button>
+          <Button size="sm" variant="outline" disabled={bulkUpdate.isPending} onClick={() => setStatus("draft")}>
+            Unpublish
+          </Button>
+          <Select value={bulkCategory} onValueChange={(v) => { setBulkCategory(v); bulkUpdate.mutate({ category_id: v }); }}>
+            <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Change category" /></SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex gap-1">
+            <Input
+              className="h-9 w-[180px]"
+              placeholder="Set author"
+              value={bulkAuthor}
+              onChange={(e) => setBulkAuthor(e.target.value)}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!bulkAuthor.trim() || bulkUpdate.isPending}
+              onClick={() => bulkUpdate.mutate({ author: bulkAuthor.trim() })}
+            >
+              Apply
+            </Button>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
+            <X className="mr-1 h-4 w-4" />Clear
+          </Button>
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>
       ) : posts.length === 0 ? (
@@ -131,7 +225,11 @@ const Posts = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all posts" />
+                  </TableHead>
                   <TableHead>Title</TableHead>
+                  <TableHead>Author</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
@@ -140,8 +238,17 @@ const Posts = () => {
               </TableHeader>
               <TableBody>
                 {posts.map((post) => (
-                  <TableRow key={post.id}>
+                  <TableRow key={post.id} data-state={selected.includes(post.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.includes(post.id)}
+                        onCheckedChange={() => toggleOne(post.id)}
+                        aria-label={`Select ${post.title}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium max-w-[250px] truncate">{post.title}</TableCell>
+                    <TableCell className="text-muted-foreground">{post.author ?? "—"}</TableCell>
+
                     <TableCell className="text-muted-foreground">{(post.categories as any)?.name ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant={post.status === "published" ? "default" : "secondary"}>
