@@ -174,6 +174,46 @@ const Posts = () => {
         />
       </div>
 
+      {/* Bulk actions */}
+      {selectedCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-3">
+          <span className="text-sm font-medium">{selectedCount} selected</span>
+          <Button size="sm" variant="outline" disabled={bulkUpdate.isPending} onClick={() => setStatus("published")}>
+            Publish
+          </Button>
+          <Button size="sm" variant="outline" disabled={bulkUpdate.isPending} onClick={() => setStatus("draft")}>
+            Unpublish
+          </Button>
+          <Select value={bulkCategory} onValueChange={(v) => { setBulkCategory(v); bulkUpdate.mutate({ category_id: v }); }}>
+            <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Change category" /></SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex gap-1">
+            <Input
+              className="h-9 w-[180px]"
+              placeholder="Set author"
+              value={bulkAuthor}
+              onChange={(e) => setBulkAuthor(e.target.value)}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!bulkAuthor.trim() || bulkUpdate.isPending}
+              onClick={() => bulkUpdate.mutate({ author: bulkAuthor.trim() })}
+            >
+              Apply
+            </Button>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
+            <X className="mr-1 h-4 w-4" />Clear
+          </Button>
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>
       ) : posts.length === 0 ? (
@@ -184,7 +224,11 @@ const Posts = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all posts" />
+                  </TableHead>
                   <TableHead>Title</TableHead>
+                  <TableHead>Author</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
@@ -193,8 +237,17 @@ const Posts = () => {
               </TableHeader>
               <TableBody>
                 {posts.map((post) => (
-                  <TableRow key={post.id}>
+                  <TableRow key={post.id} data-state={selected.includes(post.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.includes(post.id)}
+                        onCheckedChange={() => toggleOne(post.id)}
+                        aria-label={`Select ${post.title}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium max-w-[250px] truncate">{post.title}</TableCell>
+                    <TableCell className="text-muted-foreground">{post.author ?? "—"}</TableCell>
+
                     <TableCell className="text-muted-foreground">{(post.categories as any)?.name ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant={post.status === "published" ? "default" : "secondary"}>
