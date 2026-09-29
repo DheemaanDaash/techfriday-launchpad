@@ -35,6 +35,51 @@ export type Database = {
         }
         Relationships: []
       }
+      domain_inquiries: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          intended_use: string
+          message: string | null
+          name: string
+          offer_amount: number
+          status: Database["public"]["Enums"]["domain_inquiry_status"]
+          submission_fingerprint: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          intended_use: string
+          message?: string | null
+          name: string
+          offer_amount: number
+          status?: Database["public"]["Enums"]["domain_inquiry_status"]
+          submission_fingerprint: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          intended_use?: string
+          message?: string | null
+          name?: string
+          offer_amount?: number
+          status?: Database["public"]["Enums"]["domain_inquiry_status"]
+          submission_fingerprint?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           author: string | null
@@ -124,6 +169,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      domain_inquiry_status: "new" | "contacted" | "closed"
       post_status: "draft" | "published"
     }
     CompositeTypes: {
@@ -253,6 +299,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      domain_inquiry_status: ["new", "contacted", "closed"],
       post_status: ["draft", "published"],
     },
   },
