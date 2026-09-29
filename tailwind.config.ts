@@ -51,6 +51,18 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        domain: {
+          DEFAULT: "hsl(var(--domain-background))",
+          surface: "hsl(var(--domain-surface))",
+          elevated: "hsl(var(--domain-elevated))",
+          foreground: "hsl(var(--domain-foreground))",
+          muted: "hsl(var(--domain-muted))",
+          line: "hsl(var(--domain-line))",
+          blue: "hsl(var(--domain-blue))",
+          mint: "hsl(var(--domain-mint))",
+          "mint-foreground": "hsl(var(--domain-mint-foreground))",
+          danger: "hsl(var(--domain-danger))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -86,11 +98,24 @@ export default {
           "0%, 100%": { opacity: "0.4" },
           "50%": { opacity: "0.8" },
         },
+        "domain-rise": {
+          from: { opacity: "0", transform: "translateY(18px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "status-pulse": {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.45", transform: "scale(1.35)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
+        "domain-rise": "domain-rise 700ms ease-out both",
+        "status-pulse": "status-pulse 2.4s ease-in-out infinite",
+      },
+      boxShadow: {
+        domain: "var(--shadow-domain)",
       },
     },
   },
