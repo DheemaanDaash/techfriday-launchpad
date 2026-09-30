@@ -18,6 +18,8 @@ import Dashboard from "./pages/admin/Dashboard";
 import Categories from "./pages/admin/Categories";
 import Posts from "./pages/admin/Posts";
 import PostForm from "./pages/admin/PostForm";
+import DomainForSale from "./pages/DomainForSale";
+import DomainInquiries from "./pages/admin/DomainInquiries";
 
 const queryClient = new QueryClient();
 
@@ -29,9 +31,11 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Main site */}
+            <Route path="/" element={<DomainForSale />} />
+
+            {/* Editorial site retained on its existing routes */}
             <Route element={<Layout />}>
-              <Route path="/" element={<Home />} />
+              <Route path="/home" element={<Home />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/category/:slug" element={<CategoryPosts />} />
@@ -54,6 +58,7 @@ const App = () => (
               <Route path="categories" element={<Categories />} />
               <Route path="posts" element={<Posts />} />
               <Route path="posts/:id" element={<PostForm />} />
+              <Route path="domain-inquiries" element={<DomainInquiries />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

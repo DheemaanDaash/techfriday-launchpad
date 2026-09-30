@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, FolderOpen, LogOut } from "lucide-react";
+import { LayoutDashboard, FileText, FolderOpen, LogOut, Inbox } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +22,7 @@ const navItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Posts", url: "/admin/posts", icon: FileText },
   { title: "Categories", url: "/admin/categories", icon: FolderOpen },
+  { title: "Domain Inquiries", url: "/admin/domain-inquiries", icon: Inbox },
 ];
 
 export function AdminSidebar() {
