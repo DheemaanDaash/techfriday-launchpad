@@ -11,13 +11,8 @@ const allowedOrigins = new Set([
 
 const offerSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  company: z.string().trim().max(120).optional(),
   email: z.string().trim().email().max(254),
-  website: z.string().trim().url().max(500).optional().or(z.literal("")),
   offerAmount: z.coerce.number().int().min(100).max(100_000_000),
-  intendedUse: z.string().trim().min(2).max(120),
-  message: z.string().trim().max(2000).optional(),
-  acknowledgment: z.literal(true),
   websiteCheck: z.string().max(0).optional(),
 }).strict();
 
@@ -57,12 +52,8 @@ async function sendOptionalEmail(offer: z.infer<typeof offerSchema>) {
       subject: `TechFriday.tech offer: $${offer.offerAmount.toLocaleString()} from ${offer.name}`,
       text: [
         `Name: ${offer.name}`,
-        `Company: ${offer.company || "Not provided"}`,
         `Email: ${offer.email}`,
-        `Website: ${offer.website || "Not provided"}`,
         `Offer: $${offer.offerAmount.toLocaleString()} USD`,
-        `Intended use: ${offer.intendedUse}`,
-        `Message: ${offer.message || "Not provided"}`,
       ].join("\n"),
     }),
   });
@@ -112,12 +103,8 @@ Deno.serve(async (req) => {
 
     const { error: insertError } = await admin.from("domain_inquiries").insert({
       name: offer.name,
-      company: offer.company || null,
       email: offer.email.toLowerCase(),
-      website: offer.website || null,
       offer_amount: offer.offerAmount,
-      intended_use: offer.intendedUse,
-      message: offer.message || null,
       submission_fingerprint: fingerprint,
     });
     if (insertError) throw insertError;
