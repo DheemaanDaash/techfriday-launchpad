@@ -99,8 +99,8 @@ export default {
           "50%": { opacity: "0.8" },
         },
         "domain-rise": {
-          from: { opacity: "0", transform: "translateY(18px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
+          from: { transform: "translateY(18px)" },
+          to: { transform: "translateY(0)" },
         },
         "status-pulse": {
           "0%, 100%": { opacity: "1", transform: "scale(1)" },
