@@ -20,7 +20,7 @@ export const domainOfferSchema = z.object({
     .max(100_000_000, "Offer amount is too high"),
   intendedUse: z.string().trim().min(2, "Tell us the intended use").max(120, "Intended use is too long"),
   message: optionalText(2000),
-  acknowledgment: z.literal(true, { errorMap: () => ({ message: "Please confirm this is a domain acquisition inquiry" }) }),
+  acknowledgment: z.boolean().refine((value) => value, "Please confirm this is a domain acquisition inquiry"),
   websiteCheck: z.string().max(0, "Submission rejected").optional(),
 });
 
