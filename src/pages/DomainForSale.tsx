@@ -1,31 +1,15 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { ArrowRight, CircleCheck, Loader2 } from "lucide-react";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { domainOfferSchema, type DomainOfferValues } from "@/lib/domainOffer";
 
-const audiences = [
-  "Technology communities",
-  "Developer events",
-  "Tech newsletters",
-  "Podcasts and media",
-  "Technology education",
-  "AI communities",
-  "Developer platforms",
-  "Technology conferences",
-  "Startup brands",
-  "Recurring “Tech Friday” programs",
-];
-
-const fieldClass = "h-12 rounded-md border-domain-line bg-domain-surface text-domain-foreground placeholder:text-domain-muted/60 focus-visible:ring-domain-mint focus-visible:ring-offset-domain";
+const fieldClass = "h-11 rounded-md border-domain-line bg-domain-surface text-sm text-domain-foreground placeholder:text-domain-muted/60 focus-visible:ring-domain-mint focus-visible:ring-offset-domain";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -35,9 +19,9 @@ function FieldError({ message }: { message?: string }) {
 function DomainOfferForm() {
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState("");
-  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<DomainOfferValues>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<DomainOfferValues>({
     resolver: zodResolver(domainOfferSchema),
-    defaultValues: { name: "", company: "", email: "", website: "", offerAmount: 999, intendedUse: "", message: "", acknowledgment: false, websiteCheck: "" },
+    defaultValues: { name: "", email: "", offerAmount: 999, websiteCheck: "" },
   });
 
   const onSubmit = async (values: DomainOfferValues) => {
@@ -65,7 +49,7 @@ function DomainOfferForm() {
 
   if (submitted) {
     return (
-      <div className="flex min-h-[380px] flex-col items-center justify-center text-center" role="status">
+      <div className="flex min-h-[260px] flex-col items-center justify-center text-center" role="status">
         <span className="mb-6 flex h-14 w-14 items-center justify-center rounded-full border border-domain-mint/35 bg-domain-mint/10 text-domain-mint">
           <CircleCheck className="h-7 w-7" aria-hidden="true" />
         </span>
@@ -76,81 +60,30 @@ function DomainOfferForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5 sm:grid-cols-2" noValidate>
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4" noValidate>
       <div>
         <Label htmlFor="name" className="text-domain-foreground">Name <span aria-hidden="true">*</span></Label>
         <Input id="name" autoComplete="name" maxLength={100} className={fieldClass} {...register("name")} aria-invalid={Boolean(errors.name)} />
         <FieldError message={errors.name?.message} />
       </div>
       <div>
-        <Label htmlFor="company" className="text-domain-foreground">Company</Label>
-        <Input id="company" autoComplete="organization" maxLength={120} className={fieldClass} {...register("company")} />
-        <FieldError message={errors.company?.message} />
-      </div>
-      <div>
-        <Label htmlFor="email" className="text-domain-foreground">Work Email <span aria-hidden="true">*</span></Label>
+        <Label htmlFor="email" className="text-domain-foreground">Email <span aria-hidden="true">*</span></Label>
         <Input id="email" type="email" autoComplete="email" maxLength={254} className={fieldClass} {...register("email")} aria-invalid={Boolean(errors.email)} />
         <FieldError message={errors.email?.message} />
-      </div>
-      <div>
-        <Label htmlFor="website" className="text-domain-foreground">Current Website</Label>
-        <Input id="website" type="url" inputMode="url" placeholder="https://" autoComplete="url" maxLength={500} className={fieldClass} {...register("website")} aria-invalid={Boolean(errors.website)} />
-        <FieldError message={errors.website?.message} />
       </div>
       <div>
         <Label htmlFor="offerAmount" className="text-domain-foreground">Offer Amount (USD) <span aria-hidden="true">*</span></Label>
         <Input id="offerAmount" type="number" inputMode="numeric" min={100} max={100000000} step={1} className={fieldClass} {...register("offerAmount")} aria-invalid={Boolean(errors.offerAmount)} />
         <FieldError message={errors.offerAmount?.message} />
       </div>
-      <div>
-        <Label htmlFor="intendedUse" className="text-domain-foreground">Intended Use <span aria-hidden="true">*</span></Label>
-        <Controller
-          control={control}
-          name="intendedUse"
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger id="intendedUse" className={fieldClass} aria-invalid={Boolean(errors.intendedUse)}>
-                <SelectValue placeholder="Select a use" />
-              </SelectTrigger>
-              <SelectContent>
-                {audiences.map((label) => <SelectItem key={label} value={label}>{label}</SelectItem>)}
-                <SelectItem value="Other technology project">Other technology project</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        />
-        <FieldError message={errors.intendedUse?.message} />
-      </div>
-      <div className="sm:col-span-2">
-        <Label htmlFor="message" className="text-domain-foreground">Message</Label>
-        <Textarea id="message" rows={4} maxLength={2000} className={`${fieldClass} min-h-28 resize-y py-3`} {...register("message")} />
-        <FieldError message={errors.message?.message} />
-      </div>
       <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
         <Label htmlFor="websiteCheck">Leave this field empty</Label>
         <Input id="websiteCheck" tabIndex={-1} autoComplete="off" {...register("websiteCheck")} />
       </div>
-      <div className="sm:col-span-2">
-        <Controller
-          control={control}
-          name="acknowledgment"
-          render={({ field }) => (
-            <div className="flex items-start gap-3">
-              <Checkbox id="acknowledgment" checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} className="mt-0.5 border-domain-muted data-[state=checked]:border-domain-mint data-[state=checked]:bg-domain-mint data-[state=checked]:text-domain-mint-foreground" />
-              <Label htmlFor="acknowledgment" className="font-normal leading-relaxed text-domain-muted">
-                I understand this form is an inquiry about acquiring the TechFriday.tech domain.
-              </Label>
-            </div>
-          )}
-        />
-        <FieldError message={errors.acknowledgment?.message} />
-      </div>
-      {serverError && <p className="sm:col-span-2 rounded-md border border-domain-danger/30 bg-domain-danger/10 p-3 text-sm text-domain-danger" role="alert">{serverError}</p>}
-      <div className="sm:col-span-2">
-        <Button type="submit" size="lg" disabled={isSubmitting} className="h-13 w-full bg-domain-mint text-domain-mint-foreground hover:bg-domain-mint/90">
-          {isSubmitting ? <><Loader2 className="animate-spin" /> Submitting…</> : <>Submit Offer <ArrowRight /></>}
-        </Button>
-      </div>
+      {serverError && <p className="rounded-md border border-domain-danger/30 bg-domain-danger/10 p-3 text-sm text-domain-danger" role="alert">{serverError}</p>}
+      <Button type="submit" disabled={isSubmitting} className="h-11 w-full bg-domain-mint text-sm font-medium text-domain-mint-foreground hover:bg-domain-mint/90">
+        {isSubmitting ? <><Loader2 className="animate-spin" /> Submitting…</> : <>Submit Offer <ArrowRight /></>}
+      </Button>
     </form>
   );
 }
