@@ -41,7 +41,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
-          intended_use: string
+          intended_use: string | null
           message: string | null
           name: string
           offer_amount: number
@@ -55,7 +55,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
-          intended_use: string
+          intended_use?: string | null
           message?: string | null
           name: string
           offer_amount: number
@@ -69,7 +69,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
-          intended_use?: string
+          intended_use?: string | null
           message?: string | null
           name?: string
           offer_amount?: number

@@ -1,0 +1,1 @@
+ALTER TABLE public.domain_inquiries ALTER COLUMN intended_use DROP NOT NULL;
