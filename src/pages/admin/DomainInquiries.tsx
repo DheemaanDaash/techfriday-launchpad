@@ -71,10 +71,12 @@ export default function DomainInquiries() {
                   </Select>
                 </div>
               </div>
-              <div className="mt-5 grid gap-4 border-t pt-5 md:grid-cols-[220px_1fr]">
-                <div><p className="text-xs font-semibold uppercase text-muted-foreground">Intended use</p><p className="mt-1 text-sm">{inquiry.intended_use}</p></div>
-                <div><p className="text-xs font-semibold uppercase text-muted-foreground">Message</p><p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{inquiry.message || "No message provided."}</p></div>
-              </div>
+              {(inquiry.intended_use || inquiry.message) && (
+                <div className="mt-5 grid gap-4 border-t pt-5 md:grid-cols-[220px_1fr]">
+                  {inquiry.intended_use && <div><p className="text-xs font-semibold uppercase text-muted-foreground">Intended use</p><p className="mt-1 text-sm">{inquiry.intended_use}</p></div>}
+                  {inquiry.message && <div><p className="text-xs font-semibold uppercase text-muted-foreground">Message</p><p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{inquiry.message}</p></div>}
+                </div>
+              )}
             </article>
           ))}
         </div>
