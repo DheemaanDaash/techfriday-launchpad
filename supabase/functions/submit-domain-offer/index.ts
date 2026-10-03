@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.101.1";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.25.76";
+import nodemailer from "npm:nodemailer@6.9.16";
 
 const allowedOrigins = new Set([
   "https://techfriday.tech",
@@ -37,27 +38,35 @@ async function sha256(value: string) {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function sendOptionalEmail(offer: z.infer<typeof offerSchema>) {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  const recipient = Deno.env.get("OFFER_NOTIFICATION_EMAIL");
-  const sender = Deno.env.get("OFFER_FROM_EMAIL");
-  if (!apiKey || !recipient || !sender) return;
+async function sendOfferAlert(offer: z.infer<typeof offerSchema>) {
+  const user = Deno.env.get("GMAIL_USER");
+  const appPassword = Deno.env.get("GMAIL_APP_PASSWORD");
+  const recipients = Deno.env.get("OFFER_ALERT_RECIPIENTS")
+    ?.split(",")
+    .map((address) => address.trim())
+    .filter(Boolean);
+  if (!user || !appPassword || !recipients?.length) return;
 
-  const emailResponse = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: sender,
-      to: [recipient],
-      subject: `TechFriday.tech offer: $${offer.offerAmount.toLocaleString()} from ${offer.name}`,
-      text: [
-        `Name: ${offer.name}`,
-        `Email: ${offer.email}`,
-        `Offer: $${offer.offerAmount.toLocaleString()} USD`,
-      ].join("\n"),
-    }),
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: { user, pass: appPassword },
   });
-  if (!emailResponse.ok) console.error("Offer notification email failed", emailResponse.status);
+
+  await transporter.sendMail({
+    from: `TechFriday.tech Offers <${user}>`,
+    to: recipients,
+    replyTo: offer.email,
+    subject: `TechFriday.tech offer: $${offer.offerAmount.toLocaleString()} from ${offer.name}`,
+    text: [
+      `Name: ${offer.name}`,
+      `Email: ${offer.email}`,
+      `Offer: $${offer.offerAmount.toLocaleString()} USD`,
+      "",
+      "View all inquiries in the admin inbox.",
+    ].join("\n"),
+  });
 }
 
 Deno.serve(async (req) => {
@@ -109,7 +118,11 @@ Deno.serve(async (req) => {
     });
     if (insertError) throw insertError;
 
-    await sendOptionalEmail(offer);
+    try {
+      await sendOfferAlert(offer);
+    } catch (emailError) {
+      console.error("Offer alert email failed", emailError instanceof Error ? emailError.message : "Unknown error");
+    }
     return response(origin, { success: true }, 201);
   } catch (error) {
     console.error("submit-domain-offer failed", error instanceof Error ? error.message : "Unknown error");
